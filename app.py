@@ -267,22 +267,32 @@ def logout():
 @login_required
 def dashboard():
     is_admin = current_user.role == 'admin'
-    # For the dashboard, Mesa de Entrada users see only their department, like regular users.
-    if is_admin:
-        departments_for_dashboard = Department.query.all()
+    # Verificar si el usuario actual pertenece al departamento de Intendencia
+    is_intendencia_user = current_user.department == INTENDENCIA_DEPT_NAME
+
+    if is_admin or is_intendencia_user:
+        # El administrador o un usuario de Intendencia pueden ver todos los departamentos
+        departments_for_dashboard = Department.query.order_by(Department.name).all()
         recent_records_list = Record.query.order_by(Record.created_at.desc()).limit(8).all()
     else:
+        # Otros usuarios solo ven su propio departamento
         user_dept_name = current_user.department
         user_department_obj_for_dashboard = Department.query.filter_by(name=user_dept_name).first()
+        
         if user_department_obj_for_dashboard:
             departments_for_dashboard = [user_department_obj_for_dashboard]
             recent_records_list = Record.query.filter_by(department_id=user_department_obj_for_dashboard.id)\
                                           .order_by(Record.created_at.desc()).limit(8).all()
         else:
+            # Caso en que el departamento del usuario no se encuentra (debería ser raro)
             departments_for_dashboard = []
             recent_records_list = []
-            flash(f"No se pudo encontrar el departamento asignado: {user_dept_name}", "warning")
-    return render_template('dashboard.html', departments=departments_for_dashboard, recent_records=recent_records_list, DATETIME_APP_FORMAT=APP_WIDE_DATETIME_FORMAT)
+            flash(f"No se pudo encontrar su departamento asignado: '{user_dept_name}'. Por favor, contacte al administrador.", "warning")
+
+    return render_template('dashboard.html', 
+                           departments=departments_for_dashboard, 
+                           recent_records=recent_records_list, 
+                           DATETIME_APP_FORMAT=APP_WIDE_DATETIME_FORMAT)
 
 @app.route('/users')
 @login_required
@@ -1019,11 +1029,6 @@ if __name__ == '__main__':
         ensure_folders_exist() # Ensure upload and PDF folders exist
     app.run(debug=True)
     
-
-
-
-
-
 
 
 
