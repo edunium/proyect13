@@ -1,0 +1,102 @@
+/* project/static/css/estilo_impresion.css */
+body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.5;
+    margin: 20mm; /* Márgenes estándar para impresión A4 */
+    color: #000000; /* Texto negro para máxima legibilidad */
+    background-color: #ffffff; /* Fondo blanco */
+    font-size: 10pt; /* Tamaño de fuente base para impresión */
+}
+
+/* Ocultar elementos no deseados en la impresión */
+nav, aside, .botones-accion, .no-imprimir, script, link[href*="bootstrap.min.css"], link[href*="style.css"], .navbar, footer.border-top, #themeToggleBtn {
+    display: none !important;
+}
+
+.container.mt-4 { /* El contenedor principal de tu base.html */
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+header.print-header, main.print-main, footer.print-footer {
+    width: 100%;
+}
+
+header.print-header {
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+header.print-header h1 {
+    font-size: 16pt;
+    margin: 0;
+}
+
+footer.print-footer {
+    border-top: 1px solid #ccc;
+    padding-top: 10px;
+    margin-top: 20px;
+    font-size: 8pt;
+    text-align: center;
+    position: fixed; /* Para que aparezca al final de cada página impresa si es posible */
+    bottom: 10mm;
+    left: 20mm;
+    right: 20mm;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid; /* Evitar saltos de página justo después de un encabezado */
+    color: #333333;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+}
+
+h2 { font-size: 14pt; }
+h3 { font-size: 12pt; }
+
+p, li, td, th, div {
+    page-break-inside: avoid; /* Intentar no cortar párrafos o celdas de tabla */
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1em;
+    font-size: 9pt;
+}
+
+th, td {
+    border: 1px solid #cccccc;
+    padding: 6px 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #f0f0f0;
+    font-weight: bold;
+}
+
+ul, ol {
+    margin-bottom: 1em;
+    padding-left: 20px;
+}
+
+a {
+    text-decoration: none; /* Quitar subrayado de enlaces */
+    color: #000000; /* Enlaces en negro para impresión */
+}
+
+/* Mostrar URLs completas para enlaces (opcional, puede ser verboso) */
+/*
+a[href^="http"]:after {
+    content: " (" attr(href) ")";
+    font-size: 0.9em;
+    color: #555555;
+}
+*/
+
+@page {
+    margin: 25mm 20mm 25mm 20mm; /* top, right, bottom, left */
+}

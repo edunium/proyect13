@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {% if department %}
+        Expedientes - {{ department.name }}
+    {% elif search_term and not department %}
+        Resultados de búsqueda para "{{ search_term }}"
+    {% elif search_term and department %}
+        Resultados de búsqueda para "{{ search_term }}" en {{ department.name }}
+    {% else %}
+        Todos los Expedientes
+    {% endif %}
+     - Sistema Municipal
+{% endblock %}
+
+{% block styles %}
+<style>
+    .status-badge {
+        min-width: 100px;
+    }
+    .table-hover tbody tr {
+        transition: background-color 0.2s ease;
+    }
+    .table-hover tbody tr:hover {
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+    .record-number {
+        font-family: monospace;
+        font-weight: bold;
+    }
+    .filter-form .form-control, .filter-form .form-select {
+        border-radius: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        {% if department %}
+            Expedientes en {{ department.name }}
+        {% elif search_term and not department %}
+            Resultados de búsqueda para "{{ search_term }}"
+        {% elif search_term and department %}
+            Resultados de búsqueda para "{{ search_term }}" en {{ department.name }}
+        {% else %}
+            Todos los Expedientes
+        {% endif %}
+    </h1>
+    <a href="{{ url_for('add_record') }}" class="btn btn-primary shadow-sm">
+        <i class="bi bi-plus-circle"></i> Nuevo Expediente
+    </a>
+</div>
+
+<!-- Filters -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
+    </div>
+    <div class="card-body">
+        <form class="filter-form" method="GET" action="{{ url_for('records') }}">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label for="department-filter-select" class="form-label">Departamento</label>
+                    <select class="form-select" id="department-filter-select" name="department">
+                        <option value="">Todos los departamentos</option>
+                        {% for dept_item in departments %}
+                        <option value="{{ dept_item.id }}" {% if selected_department_id and selected_department_id|int == dept_item.id %}selected{% endif %}>
+                            {{ dept_item.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="status-filter-select" class="form-label">Estado</label>
+                    <select class="form-select" id="status-filter-select" name="status">
+                        <option value="">Todos los estados</option>
+                        <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Activo</option>
+                        <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>Pendiente</option>
+                        <option value="in_progress" {% if selected_status == 'in_progress' %}selected{% endif %}>En Progreso</option>
+                        <option value="archived" {% if selected_status == 'archived' %}selected{% endif %}>Archivado</option>
+                        <option value="urgente" {% if selected_status == 'urgente' %}selected{% endif %}>Urgente</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="search-term-input" class="form-label">Buscar</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="search-term-input" name="search_term" placeholder="Número, solicitante, depto..." value="{{ search_term or '' }}">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel"></i> Filtrar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Records Table -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">Lista de Expedientes</h6>
+        {% if records|length > 0 %}
+        <span class="badge bg-primary rounded-pill">{{ records|length }} encontrado(s)</span>
+        {% else %}
+        <span class="badge bg-warning text-dark rounded-pill">No se encontraron expedientes</span>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th width="15%">Número</th>
+                        <th width="25%">Solicitante</th>
+                        <th width="15%">Departamento</th>
+                        <th width="10%">Estado</th>
+                        <th width="15%">Fecha</th>
+                        <th width="10%">Creado Por</th>
+                        <th width="10%">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if records %}
+                        {% for record in records %}
+                        <tr>
+                            <td>
+                                <span class="record-number {% if record.digital_number.split('-')|length == 6 %}text-info{% endif %}">{{ record.digital_number }}</span>
+                                {% if record.digital_number.split('-')|length == 6 %}
+                                    <i class="bi bi-arrow-repeat text-primary ms-1" title="Re-enviado"></i>
+                                {% endif %}
+                            </td>
+                            <td>{{ record.full_name }}</td>
+                            <td>{{ record.department.name }}</td>
+                            <td class="text-center">
+                                {% if record.status == 'active' %}
+                                <span class="badge bg-success status-badge">Activo</span>
+                                {% elif record.status == 'pending' %} {# Value 'pending' for 'Pendiente' #}
+                                <span class="badge bg-warning text-dark status-badge">Pendiente</span>
+                                {% elif record.status == 'urgente' %}
+                                <span class="badge bg-danger status-badge">Urgente</span>
+                                {% elif record.status == 'in_progress' %}
+                                <span class="badge bg-info text-dark status-badge">En Progreso</span>
+                                {% elif record.status == 'archived' %}
+                                <span class="badge bg-secondary status-badge">Archivado</span>
+                                {% else %}
+                                <span class="badge bg-light text-dark status-badge">{{ record.status|capitalize }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ record.created_at.strftime(DATETIME_APP_FORMAT) }}</td>
+                            <td>{{ record.creator.name }}</td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('view_record', record_id=record.id) }}" class="btn btn-sm btn-info">
+                                        <i class="bi bi-eye" title="Ver"></i>
+                                    </a>
+                                    {% if current_user.role == 'admin' %}
+                                    <a href="{{ url_for('edit_record', record_id=record.id) }}" class="btn btn-sm btn-warning">
+                                        <i class="bi bi-pencil" title="Editar Expediente"></i>
+                                    </a>
+                                    {% endif %}
+                                    <button type="button" class="btn btn-sm btn-danger">
+                                        <i class="bi bi-archive" title="Archivar"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4">No hay expedientes que coincidan con los filtros aplicados.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // The form now has a submit button, so individual listeners for auto-submit
+    // are optional. If you want them, they need to preserve other filter values.
+    // Example for department filter auto-submit (preserves other filters):
+    /*
+    document.getElementById('department-filter-select').addEventListener('change', function() {
+        const form = this.closest('form');
+        if (form) {
+            form.submit();
+        }
+    });
+    */
+    // Example for status filter auto-submit:
+    /*
+    document.getElementById('status-filter-select').addEventListener('change', function() {
+        const form = this.closest('form');
+        if (form) {
+            form.submit();
+        }
+    });
+    */
+</script>
+{% endblock %}

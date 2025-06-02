@@ -1,0 +1,303 @@
+{% extends 'base.html' %}
+
+{% block title %}Expediente {{ record.digital_number }} - Sistema Municipal{% endblock %}
+
+{% block styles %}
+<style>
+    .record-detail-card {
+        transition: all 0.3s ease;
+    }
+    .record-detail-card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    .badge-large {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+    }
+    .timeline {
+        position: relative;
+        padding-left: 2rem;
+    }
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 0.75rem;
+        top: 0;
+        height: 100%;
+        width: 2px;
+        background-color: #e9ecef;
+    }
+    .timeline-item {
+        position: relative;
+        padding-bottom: 1.5rem;
+    }
+    .timeline-dot {
+        position: absolute;
+        left: -2rem;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 50%;
+        background-color: #0d6efd;
+        top: 0.25rem;
+    }
+    .timeline-content {
+        padding: 1rem;
+        border-radius: 0.25rem;
+        border-left: 3px solid #0d6efd;
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        Expediente <span class="text-primary">{{ record.digital_number }}</span>
+    </h1>
+    <div>
+        <a href="{{ url_for('records') }}" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+        <div class="btn-group">
+            <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="bi bi-gear"></i> Acciones
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                {% if current_user.role == 'admin' %}
+                <li><a class="dropdown-item" href="{{ url_for('edit_record', record_id=record.id) }}"><i class="bi bi-pencil"></i> Editar Expediente</a></li>
+                {% endif %}
+                <li><a class="dropdown-item" href="{{ url_for('print_record_view', record_id=record.id) }}" target="_blank"><i class="bi bi-printer"></i> Imprimir Expediente</a></li>
+                {# Consider other actions based on roles if needed #}
+                
+                {% if ((current_user.role == 'admin' and current_user.department == INTENDENCIA_DEPT_NAME) or current_user.username == 'admin') and (record.status == 'pending' or record.status == 'urgente') %}
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#resendRecordModal">
+                        <i class="bi bi-send"></i> Re-enviar Expediente
+                    </button>
+                </li>
+                {% endif %}
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-archive"></i> Archivar</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <!-- Record Information -->
+        <div class="card shadow mb-4 record-detail-card">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Información del Expediente</h6>
+                <span class="badge {% if record.status == 'active' %}bg-success{% elif record.status == 'pending' %}bg-warning text-dark{% elif record.status == 'in_progress' %}bg-info text-dark{% elif record.status == 'archived' %}bg-secondary{% elif record.status == 'urgente' %}bg-danger{% else %}bg-light text-dark{% endif %} badge-large">
+                    {% if record.status == 'active' %}Activo
+                    {% elif record.status == 'pending' %}Pendiente
+                    {% elif record.status == 'in_progress' %}En Progreso
+                    {% elif record.status == 'archived' %}Archivado
+                    {% elif record.status == 'urgente' %}Urgente
+                    {% else %}{{ record.status|capitalize }}
+                    {% endif %}
+                </span>
+            </div>
+            <div class="card-body">
+                <h4 class="mb-3">{{ record.full_name }}</h4>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Número Secuencial:</strong> {{ record.sequence_number }}</p>
+                        <p class="mb-1"><strong>Número Digital:</strong> {{ record.digital_number }}</p>
+                        <p class="mb-1"><strong>Departamento:</strong> {{ record.department.name }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Creado por:</strong> {{ record.creator.name }}</p>
+                        <p class="mb-1"><strong>Fecha de Creación:</strong> {{ record.created_at.strftime(DATETIME_APP_FORMAT) }}</p>
+                        <p class="mb-1"><strong>Última Actualización:</strong> {{ record.updated_at.strftime(DATETIME_APP_FORMAT) }}</p>
+                        {% if record.transaction_date %}
+                        <p class="mb-1"><strong>Fecha de Trámite:</strong> {{ record.transaction_date.strftime(DATETIME_APP_FORMAT) }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <h5 class="mb-2">Descripción</h5>
+                    <p>{{ record.description or 'Sin descripción' }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Timeline -->
+        <div class="card shadow record-detail-card">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Historial de Actividad</h6>
+            </div>
+            <div class="card-body">
+                <div class="timeline">
+                    {% if record.history_entries.all() %}
+                        {% for entry in record.history_entries %}
+                        <div class="timeline-item">
+                            <div class="timeline-dot {% if loop.first %}bg-primary{% else %}bg-secondary{% endif %}"></div>
+                            <div class="timeline-content">
+                                <div class="d-flex justify-content-between">
+                                    <h6 class="mb-1">
+                                        {{ entry.action_type|capitalize }}
+                                        {% if entry.user %}
+                                            <small class="text-muted">por {{ entry.user.name }}</small>
+                                        {% endif %}
+                                    </h6>
+                                    <small class="text-muted">{{ entry.timestamp.strftime(DATETIME_APP_FORMAT) }}</small>
+                                </div>
+                                <p class="mb-0">{{ entry.details|safe }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No hay historial de actividad registrado para este expediente.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Department Info -->
+        <div class="card shadow mb-4 record-detail-card">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Información del Departamento</h6>
+            </div>
+            <div class="card-body">
+                <h5 class="mb-3">{{ record.department.name }}</h5>
+                <p>{{ record.department.description }}</p>
+            </div>
+        </div>
+        
+        <!-- Related Documents (Placeholder) -->
+        <div class="card shadow mb-4 record-detail-card">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Documento Adjunto</h6>
+            </div>
+            <div class="card-body">
+                {% if record.attachment_filename %}
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap">
+                            <a href="{{ url_for('download_file', filename=record.attachment_filename) }}" target="_blank" class="me-3">
+                                <i class="bi bi-file-earmark-text"></i> {{ record.attachment_filename }}
+                            </a>
+                            <a href="{{ url_for('download_file', filename=record.attachment_filename) }}?download=true" class="btn btn-sm btn-outline-secondary mt-1 mt-md-0">
+                                <!-- Añadimos un parámetro para forzar descarga si es necesario, o se puede tener una ruta separada -->
+                                <i class="bi bi-download"></i> Ver Archivo
+                            </a>
+                        </li>
+                    </ul>
+                    <hr>
+                    <p class="small text-muted">Para reemplazar el archivo adjunto, suba uno nuevo:</p>
+                {% else %}
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        No hay documentos adjuntos a este expediente.
+                    </div>
+                    <hr>
+                {% endif %}
+
+                <form method="POST" action="{{ url_for('attach_file_to_record', record_id=record.id) }}" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="attachment" class="form-label">Seleccionar archivo para {{ 'reemplazar el adjunto' if record.attachment_filename else 'adjuntar' }}:</label>
+                        <input type="file" class="form-control" id="attachment" name="attachment" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-upload"></i> Subir y Adjuntar</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Generated PDF -->
+        {% if record.generated_pdf_filename %}
+        <div class="card shadow mb-4 record-detail-card">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Expediente en PDF</h6>
+            </div>
+            <div class="card-body">
+                <p>
+                    <a href="{{ url_for('download_generated_pdf', filename=record.generated_pdf_filename) }}" target="_blank" class="btn btn-success btn-sm">
+                        <i class="bi bi-file-earmark-pdf"></i> Descargar PDF ({{ record.generated_pdf_filename }})
+                    </a>
+                </p>
+                <small class="text-muted">Este PDF se genera/actualiza automáticamente al crear o modificar el expediente.</small>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Existing Notes Display -->
+        <div class="card shadow mb-4 record-detail-card">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Notas Guardadas</h6>
+            </div>
+            <div class="card-body">
+                {% if record.notes.all() %}
+                    <ul class="list-group list-group-flush">
+                        {% for note_item in record.notes %} {# Assuming order_by is set in the relationship #}
+                        <li class="list-group-item">
+                            <p class="mb-1">{{ note_item.content|safe }}</p>
+                            <small class="text-muted">
+                                Por: {{ note_item.author.name if note_item.author else 'Usuario Desconocido' }} -
+                                {{ note_item.created_at.strftime(DATETIME_APP_FORMAT) }}
+                            </small>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">No hay notas guardadas para este expediente.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Add Note Form -->
+        <div class="card shadow record-detail-card">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Agregar Nueva Nota</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_note_to_record', record_id=record.id) }}">
+                    <div class="mb-3">
+                        <textarea class="form-control" name="note_content" rows="3" placeholder="Escriba su nota aquí..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Guardar Nota</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Resending Record -->
+{% if ((current_user.role == 'admin' and current_user.department == INTENDENCIA_DEPT_NAME) or current_user.username == 'admin') and (record.status == 'pending' or record.status == 'urgente') %}
+<div class="modal fade" id="resendRecordModal" tabindex="-1" aria-labelledby="resendRecordModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('resend_record', record_id=record.id) }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="resendRecordModalLabel">Re-enviar Expediente: {{ record.digital_number }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Está a punto de re-enviar este expediente (actualmente en <strong>{{ record.department.name }}</strong>) a un nuevo departamento. Su estado cambiará a "En Progreso" y su número digital se actualizará.</p>
+                    
+                    <div class="mb-3">
+                        <label for="new_department_id" class="form-label">Seleccione el Nuevo Departamento de Destino:</label>
+                        <select class="form-select" id="new_department_id" name="new_department_id" required>
+                            <option value="">Seleccionar departamento...</option>
+                            {% for dept in all_departments %}
+                                {% if dept.id != record.department_id %} {# Don't show current department as an option #}
+                                    <option value="{{ dept.id }}">{{ dept.name }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <p class="small text-muted">El número de secuencia original ({{ "%04d"|format(record.sequence_number|int) }}) se mantendrá.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-send-check"></i> Confirmar y Re-enviar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

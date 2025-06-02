@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Expediente N°: {{ record.digital_number }} - Imprimir</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilo_impresion.css') }}">
+</head>
+<body>
+    <header class="print-header">
+        <h1>Expediente N°: {{ record.digital_number }}</h1>
+        <p>Fecha de Creación: {{ record.created_at.strftime(DATETIME_APP_FORMAT) }}</p>
+        <!-- Puedes añadir un logo de la organización aquí si es necesario -->
+        <!-- <img src="{{ url_for('static', filename='images/logo_municipal.png') }}" alt="Logo Municipal" style="max-height: 60px; margin-bottom: 10px;"> -->
+    </header>
+    <main class="print-main">
+        <section id="datos_principales">
+            <h2>Datos del Solicitante</h2>
+            <p><strong>Nombre Completo:</strong> {{ record.full_name }}</p>
+            {% if record.dni %}<p><strong>DNI/CUIT:</strong> {{ record.dni }}</p>{% endif %}
+            {% if record.address %}<p><strong>Domicilio:</strong> {{ record.address }}</p>{% endif %}
+            {% if record.phone %}<p><strong>Teléfono:</strong> {{ record.phone }}</p>{% endif %}
+            {% if record.email %}<p><strong>Email:</strong> {{ record.email }}</p>{% endif %}
+        </section>
+
+        <section id="datos_expediente">
+            <h2>Datos del Expediente</h2>
+            <p><strong>Número Digital:</strong> {{ record.digital_number }}</p>
+            <p><strong>Número Secuencial:</strong> {{ "%04d"|format(record.sequence_number) }}</p>
+            <p><strong>Departamento:</strong> {{ record.department.name }}</p>
+            <p><strong>Descripción/Asunto:</strong> {{ record.description or 'N/A' }}</p>
+            <p><strong>Estado Actual:</strong>
+                {% if record.status == 'active' %}Activo
+                {% elif record.status == 'pending' %}Pendiente
+                {% elif record.status == 'in_progress' %}En Progreso
+                {% elif record.status == 'archived' %}Archivado
+                {% elif record.status == 'urgente' %}Urgente
+                {% else %}{{ record.status|capitalize }}{% endif %}</p>
+            {% if record.transaction_date %}<p><strong>Fecha de Trámite:</strong> {{ record.transaction_date.strftime(DATETIME_APP_FORMAT) }}</p>{% endif %}
+            <p><strong>Creado por:</strong> {{ record.creator.name }} ({{ record.creator.username }})</p>
+            <p><strong>Fecha de Creación:</strong> {{ record.created_at.strftime(DATETIME_APP_FORMAT) }}</p>
+            <p><strong>Última Modificación:</strong> {{ record.updated_at.strftime(DATETIME_APP_FORMAT) }}</p>
+        </section>
+
+        <section id="documentos_adjuntos">
+            <h2>Documento Adjunto</h2>
+            {% if record.attachment_filename %}
+            <p><strong>Nombre del archivo:</strong> {{ record.attachment_filename }}</p>
+            {% else %}
+            <p>No hay documento adjunto para este expediente.</p>
+            {% endif %}
+        </section>
+
+        <section id="historial_basico">
+            <h2>Historial Básico</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Acción</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{{ record.created_at.strftime(DATETIME_APP_FORMAT) }}</td>
+                        <td>Expediente Creado</td>
+                        <td>Por {{ record.creator.name }} en departamento {{ record.department.name }}.</td>
+                    </tr>
+                    {% if record.updated_at != record.created_at %}
+                    <tr>
+                        <td>{{ record.updated_at.strftime(DATETIME_APP_FORMAT) }}</td>
+                        <td>Última Actualización</td>
+                        <td>Se actualizó la información del expediente.</td>
+                    </tr>
+                    {% endif %}
+                    <!-- Aquí podrías añadir más eventos si tuvieras un modelo de historial detallado -->
+                </tbody>
+            </table>
+        </section>
+
+    </main>
+    <footer class="print-footer">
+        <p>Expediente impreso el: {{ fecha_actual }}</p>
+        <!-- La numeración de páginas es mejor dejarla al navegador -->
+    </footer>
+    
+    <script>
+        // Opcional: Abrir diálogo de impresión automáticamente al cargar.
+        // Descomenta la siguiente línea si deseas esta funcionalidad.
+        // window.onload = function() {
+        //     window.print();
+        // };
+    </script>
+</body>
+</html>

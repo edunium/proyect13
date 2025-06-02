@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+
+{% block title %}Nuevo Expediente - Sistema Municipal{% endblock %}
+
+{% block styles %}
+<style>
+    .form-floating>.form-control {
+        height: calc(3.5rem + 2px);
+        line-height: 1.25;
+    }
+    .form-control:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    .required-field::after {
+        content: " *";
+        color: red;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Crear Nuevo Expediente</h6>
+                <a href="{{ url_for('records') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Volver a Expedientes
+                </a>
+            </div>
+            <div class="card-body">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            
+                <form method="POST" action="{{ url_for('add_record') }}" enctype="multipart/form-data">
+                    {{ form.csrf_token if form and form.csrf_token }} <!-- Si usas Flask-WTF -->
+            
+                    <div class="row">
+                        <!-- Suggested Digital Number -->
+                        <div class="col-md-6 mb-3">
+                            <label for="suggested_digital_number_display" class="form-label">Número de Expediente Sugerido</label>
+                            <p id="suggested_digital_number_display" class="form-control-plaintext ps-2" style="min-height: calc(1.5em + .75rem + 2px); border: 1px solid #ced4da; border-radius: .25rem; padding-top: .375rem; padding-bottom: .375rem;">Seleccione un departamento para ver el número.</p>
+                        </div>
+                         <!-- Transaction Date -->
+                        <div class="col-md-6 mb-3">
+                            <label for="transaction_date" class="form-label required-field">Fecha de Trámite</label>
+                            <input type="datetime-local" class="form-control" id="transaction_date" name="transaction_date"
+                                   value="{{ current_data.get('transaction_date') if current_data and current_data.get('transaction_date') else default_transaction_date_str }}" 
+                                   required>
+                        </div>
+                    </div>
+
+
+
+                    <!-- Manual Sequence Number Input -->
+                    <div class="mb-3" id="manualSequenceContainer" style="display: none;">
+                        <label for="manual_sequence_number" class="form-label">Número de Secuencia Manual (Opcional)</label>
+                        <input type="text" class="form-control" id="manual_sequence_number" name="manual_sequence_number" 
+                               value="{{ current_data.manual_sequence_number if current_data and current_data.manual_sequence_number is not none else '' }}"
+                               placeholder="Ej: 0008 (dejar vacío para automático)">
+                        <div class="form-text">Si desea un número específico (ej. terminación 8 o 9), ingréselo aquí (4 dígitos). Si no, se usará el sugerido.</div>
+                    </div>                    
+
+                    <div class="mb-3">
+                        <label for="full_name" class="form-label required-field">Nombre Completo del Solicitante</label>
+                        <input type="text" class="form-control" id="full_name" name="full_name" value="{{ current_data.full_name if current_data else '' }}" required>
+                    </div>
+            
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="dni" class="form-label">DNI</label>
+                            <input type="text" class="form-control" id="dni" name="dni" value="{{ current_data.dni if current_data else '' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">Teléfono</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" value="{{ current_data.phone if current_data else '' }}">
+                        </div>
+                    </div>
+            
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Domicilio</label>
+                        <textarea class="form-control" id="address" name="address" rows="2">{{ current_data.address if current_data else '' }}</textarea>
+                    </div>
+            
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ current_data.email if current_data else '' }}">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="department_id" class="form-label required-field">Departamento</label>
+                            <select class="form-select" id="department_id" name="department_id" required {% if user_department and departments|length == 1 %}disabled{% endif %}>
+                                {% if not user_department or departments|length > 1 %}
+                                <option value="">Seleccione un departamento...</option>
+                                {% endif %}
+                                {% for dept in departments %}
+                                <option value="{{ dept.id }}" data-name="{{ dept.name }}" {% if current_data and current_data.department_id|string == dept.id|string %}selected{% elif not current_data and user_department and user_department.id == dept.id %}selected{% endif %}>{{ dept.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="status" class="form-label required-field">Estado</label>
+                            <select class="form-select" id="status" name="status" required>
+                                <!-- Default to 'pending' (Pendiente) -->
+                                <option value="pending" {% if current_data.get('status', 'pending') == 'pending' %}selected{% endif %}>Pendiente</option>
+                                <option value="urgente" {% if current_data.get('status') == 'urgente' %}selected{% endif %}>Urgente</option>
+                            </select>
+                        </div>
+                    </div>
+            
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descripción / Asunto</label>
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ current_data.description if current_data else '' }}</textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="attachment" class="form-label">Archivo Adjunto</label>
+                        <input type="file" class="form-control" id="attachment" name="attachment">
+                    </div>
+            
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Crear Expediente
+                    </button>
+                    <a href="{{ url_for('records') }}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const departmentSelect = document.getElementById('department_id');
+    const suggestedNumberDisplay = document.getElementById('suggested_digital_number_display');
+    const manualSequenceInput = document.getElementById('manual_sequence_number');
+    const manualSequenceContainer = document.getElementById('manualSequenceContainer');
+    
+    let departmentCodes = {};
+    try {
+        departmentCodes = JSON.parse('{{ department_codes_json | safe | default("{}") }}');
+    } catch (e) {
+        console.error("Error parsing department codes JSON:", e);
+        suggestedNumberDisplay.textContent = 'Error al cargar códigos de departamento.';
+    }
+
+    // This is the sequence number AFTER skipping 8/9, used for the suggestion.
+    const nextSequenceNumberForSuggestion = parseInt('{{ next_sequence_number | default("1") }}', 10);
+    // This is the raw sequence number BEFORE skipping 8/9, used to decide if manual input is shown.
+    const rawNextSequenceNumber = parseInt('{{ raw_next_sequence_number | default("1") }}', 10);
+    const currentDateStr = '{{ current_date_str_for_number | default("") }}';
+    
+    // Values for restricted user (department might be pre-selected and disabled)
+    const userDepartmentName = '{{ user_department.name if user_department else "" }}';
+    const userDepartmentId = '{{ user_department.id if user_department else "" }}';
+
+    function checkAndToggleManualSequenceInput() {
+        if (!manualSequenceContainer) return;
+
+        if (rawNextSequenceNumber % 10 === 8 || rawNextSequenceNumber % 10 === 9) {
+            manualSequenceContainer.style.display = 'block';
+        } else {
+            manualSequenceContainer.style.display = 'none';
+        }
+    }
+
+    function updateSuggestedNumber() {
+        let selectedDeptId = null;
+        let selectedDeptName = null;
+
+        if (departmentSelect && departmentSelect.value) { // A department is selected in the dropdown
+            selectedDeptId = departmentSelect.value;
+            const selectedOption = departmentSelect.options[departmentSelect.selectedIndex];
+            if (selectedOption && selectedOption.dataset.name) {
+                selectedDeptName = selectedOption.dataset.name;
+            } else if (selectedOption) { // Fallback if data-name is somehow missing
+                selectedDeptName = selectedOption.text; 
+            }
+        } else if (userDepartmentName && userDepartmentId) { // User is fixed to a department
+            selectedDeptId = userDepartmentId;
+            selectedDeptName = userDepartmentName;
+        }
+
+        if (selectedDeptName && !isNaN(nextSequenceNumberForSuggestion) && currentDateStr) {
+            const deptCode = departmentCodes[selectedDeptName] || `DPT${selectedDeptId}`; // Fallback code
+            const sequencePadded = String(nextSequenceNumberForSuggestion).padStart(4, '0');
+            const suggestedNumber = `${deptCode}-${sequencePadded}-${currentDateStr}`;
+            suggestedNumberDisplay.textContent = suggestedNumber;
+            // Only pre-fill if manual input is visible and empty (and not already filled by current_data)
+            if (manualSequenceInput && manualSequenceContainer.style.display === 'block' && !manualSequenceInput.value) { 
+                manualSequenceInput.value = sequencePadded;
+            }
+        } else if (!isNaN(nextSequenceNumberForSuggestion) && currentDateStr) {
+             const sequencePadded = String(nextSequenceNumberForSuggestion).padStart(4, '0');
+             suggestedNumberDisplay.textContent = `XXXX-${sequencePadded}-${currentDateStr} (seleccione departamento)`;
+             if (manualSequenceInput && manualSequenceContainer.style.display === 'block' && !manualSequenceInput.value) {
+                manualSequenceInput.value = sequencePadded;
+             }
+        } else {
+            suggestedNumberDisplay.textContent = 'Seleccione un departamento para ver el número.';
+            // Clear only if not pre-filled by current_data
+            if (manualSequenceInput && manualSequenceInput.value === String(nextSequenceNumberForSuggestion).padStart(4, '0')) {
+                 manualSequenceInput.value = '';
+            }
+        }
+    }
+
+    if (departmentSelect) {
+        departmentSelect.addEventListener('change', updateSuggestedNumber);
+    }
+    checkAndToggleManualSequenceInput(); // Call on load to set visibility
+    updateSuggestedNumber(); // Initial call to set the suggested number and potentially pre-fill manual
+});
+</script>
+{% endblock %}

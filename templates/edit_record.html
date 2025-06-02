@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Editar Expediente{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Editar Expediente: {{ record.digital_number }}</h2>
+    <hr>
+
+    <form method="POST" enctype="multipart/form-data" action="{{ url_for('edit_record', record_id=record.id) }}">
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="full_name" class="form-label">Nombre Completo del Solicitante</label>
+                    <input type="text" class="form-control" id="full_name" name="full_name" value="{{ current_data.get('full_name') if current_data else record.full_name }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="dni" class="form-label">DNI/CUIT</label>
+                    <input type="text" class="form-control" id="dni" name="dni" value="{{ current_data.get('dni') if current_data else (record.dni if record.dni else '') }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="address" class="form-label">Dirección</label>
+                    <input type="text" class="form-control" id="address" name="address" value="{{ current_data.get('address') if current_data else (record.address if record.address else '') }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="phone" class="form-label">Teléfono</label>
+                    <input type="text" class="form-control" id="phone" name="phone" value="{{ current_data.get('phone') if current_data else (record.phone if record.phone else '') }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" name="email" value="{{ current_data.get('email') if current_data else (record.email if record.email else '') }}">
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="department_id" class="form-label">Departamento</label>
+                    <select class="form-select" id="department_id" name="department_id" required>
+                        {% for dept in departments %}
+                            <option value="{{ dept.id }}" 
+                                {% if current_data and current_data.get('department_id')|int == dept.id %}selected
+                                {% elif not current_data and dept.id == record.department_id %}selected
+                                {% endif %}>
+                                {{ dept.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="status" class="form-label">Estado</label>
+                    <select class="form-select" id="status" name="status" required disabled>
+                        {% set current_status_val = current_data.get('status') if current_data else record.status %}
+                        <option value="pending" {% if current_status_val == 'pending' %}selected{% endif %}>Pendiente</option>
+                        <option value="in_progress" {% if current_status_val == 'in_progress' %}selected{% endif %}>En Progreso</option>
+                        <option value="active" {% if current_status_val == 'active' %}selected{% endif %}>Activo</option>
+                        <option value="urgente" {% if current_status_val == 'urgente' %}selected{% endif %}>Urgente</option>
+                        <option value="archived" {% if current_status_val == 'archived' %}selected{% endif %}>Archivado</option>
+                        {# Fallback for any other status that might exist in old records but is not in the standard list #}
+                        {% if current_status_val and current_status_val not in ['pending', 'in_progress', 'active', 'urgente', 'archived'] %}
+                            <option value="{{ current_status_val }}" selected>{{ current_status_val|capitalize }} (Valor Actual)</option>
+                        {% endif %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="transaction_date" class="form-label">Fecha de Trámite (Opcional)</label>
+                    <input type="datetime-local" class="form-control" id="transaction_date" name="transaction_date"
+                           value="{{ current_data.get('transaction_date') if current_data else (record.transaction_date.strftime('%Y-%m-%dT%H:%M') if record.transaction_date else '') }}">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="description" class="form-label">Descripción / Observaciones</label>
+                    <textarea class="form-control" id="description" name="description" rows="3">{{ current_data.get('description') if current_data else (record.description if record.description else '') }}</textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label for="attachment" class="form-label">Reemplazar Archivo Adjunto (Opcional)</label>
+                    <input type="file" class="form-control" id="attachment" name="attachment">
+                    {% if record.attachment_filename %}
+                        <small class="form-text text-muted">
+                            Archivo actual: <a href="{{ url_for('download_file', filename=record.attachment_filename) }}" target="_blank">{{ record.attachment_filename }}</a>.
+                            Subir un nuevo archivo reemplazará el actual.
+                        </small>
+                    {% else %}
+                        <small class="form-text text-muted">No hay archivo adjunto actualmente.</small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <hr>
+        <p><strong>Número de Secuencia:</strong> {{ "%04d"|format(record.sequence_number) }} (No editable)</p>
+        <p><strong>Número Digital Actual:</strong> {{ record.digital_number }} (Se regenerará si cambia el departamento)</p>
+        <hr>
+        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        <a href="{{ url_for('view_record', record_id=record.id) }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Sistema Municipal{% endblock %}
+
+{% block styles %}
+<style>
+    .card-stat {
+        transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    }
+    .card-stat:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .dept-icon {
+        font-size: 2.5rem;
+        opacity: 0.8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-sm-flex align-items-center justify-content-between">
+            <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+            <a href="{{ url_for('add_record') }}" class="d-none d-sm-inline-block btn btn-primary shadow-sm">
+                <i class="bi bi-plus-circle"></i> Nuevo Expediente
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Department Stats -->
+<div class="row">
+    {% for department in departments %}
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2 card-stat">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            {{ department.name }}
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ department.records|length }} Expedientes
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-folder dept-icon text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent border-top-0">
+                <a href="{{ url_for('records', department=department.id) }}" class="small text-primary stretched-link">
+                    Ver expedientes <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Recent Records -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Expedientes Recientes</h6>
+                <a href="{{ url_for('records') }}" class="btn btn-sm btn-outline-primary">
+                    Ver Todos <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="20%">Número</th>
+                                <th width="30%">Solicitante</th>
+                                <th>Departamento</th>
+                                <th>Estado</th>
+                                <th>Fecha</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if recent_records %}
+                                {% for record in recent_records %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-primary">{{ record.digital_number }}</span>
+                                    </td>
+                                    <td>{{ record.full_name }}</td>
+                                    <td>{{ record.department.name }}</td>
+                                    <td>
+                                        {% if record.status == 'active' %}
+                                        <span class="badge bg-success">Activo</span>
+                                        {% elif record.status == 'archived' %}
+                                        <span class="badge bg-secondary">Archivado</span>
+                                        {% elif record.status == 'urgente' %}
+                                        <span class="badge bg-danger">Urgente</span>
+                                        {% elif record.status == 'pending' %}
+                                        <span class="badge bg-warning text-dark">Pendiente</span>
+                                        {% elif record.status == 'in_progress' %}
+                                        <span class="badge bg-info text-dark">En Progreso</span>
+                                        {% else %}
+                                        <span class="badge bg-light text-dark">{{ record.status|capitalize }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ record.created_at.strftime(DATETIME_APP_FORMAT) }}</td>
+                                    <td>
+                                        <a href="{{ url_for('view_record', record_id=record.id) }}" class="btn btn-sm btn-info" title="Ver Detalles">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center">No hay expedientes recientes</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
