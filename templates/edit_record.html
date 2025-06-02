@@ -34,6 +34,22 @@
                     <label for="email" class="form-label">Email</label>
                     <input type="email" class="form-control" id="email" name="email" value="{{ current_data.get('email') if current_data else (record.email if record.email else '') }}">
                 </div>
+                <div class="mb-3">
+                    <label for="status" class="form-label">Estado del Expediente:</label>
+                    {# This route is admin-only, so current_user.role == 'admin' check is redundant here but kept for clarity if template is reused #}
+                    {% if current_user.role == 'admin' %}
+                        <select class="form-select" id="status" name="status">
+                            {# Assuming ALLOWED_RECORD_STATUSES is passed from the route #}
+                            {% for status_option in ALLOWED_RECORD_STATUSES %}
+                                <option value="{{ status_option }}" {% if (current_data.get('status') if current_data else record.status) == status_option %}selected{% endif %}>
+                                    {{ status_option|capitalize }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    {% else %}
+                        <input type="text" class="form-control" id="status" name="status" value="{{ (current_data.get('status') if current_data else record.status)|capitalize }}" readonly>
+                    {% endif %}
+                </div>
             </div>
 
             <div class="col-md-6">
@@ -48,22 +64,6 @@
                                 {{ dept.name }}
                             </option>
                         {% endfor %}
-                    </select>
-                </div>
-
-                <div class="mb-3">
-                    <label for="status" class="form-label">Estado</label>
-                    <select class="form-select" id="status" name="status" required disabled>
-                        {% set current_status_val = current_data.get('status') if current_data else record.status %}
-                        <option value="pending" {% if current_status_val == 'pending' %}selected{% endif %}>Pendiente</option>
-                        <option value="in_progress" {% if current_status_val == 'in_progress' %}selected{% endif %}>En Progreso</option>
-                        <option value="active" {% if current_status_val == 'active' %}selected{% endif %}>Activo</option>
-                        <option value="urgente" {% if current_status_val == 'urgente' %}selected{% endif %}>Urgente</option>
-                        <option value="archived" {% if current_status_val == 'archived' %}selected{% endif %}>Archivado</option>
-                        {# Fallback for any other status that might exist in old records but is not in the standard list #}
-                        {% if current_status_val and current_status_val not in ['pending', 'in_progress', 'active', 'urgente', 'archived'] %}
-                            <option value="{{ current_status_val }}" selected>{{ current_status_val|capitalize }} (Valor Actual)</option>
-                        {% endif %}
                     </select>
                 </div>
 

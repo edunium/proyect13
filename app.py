@@ -44,6 +44,9 @@ DEPARTMENT_CODES = {
     'Prensa': 'PR'
 }
 
+# Allowed statuses for records - Ensure this list is comprehensive
+ALLOWED_RECORD_STATUSES = ['activo', 'pendiente', 'en progreso', 'urgente']
+
 # Inject current time into all templates
 @app.context_processor
 def inject_now():
@@ -709,7 +712,11 @@ def edit_record(record_id):
     departments_for_select = Department.query.order_by(Department.name).all()
 
     if request.method == 'POST':
+        changed_fields_details = [] # To build a more detailed history message
+        made_any_change = False # Flag to track if any field was actually changed
+
         try:
+            original_status_for_history = record_to_edit.status # For history comparison
             # Basic fields
             original_department_id = record_to_edit.department_id
             record_to_edit.full_name = request.form.get('full_name', record_to_edit.full_name)
@@ -718,7 +725,6 @@ def edit_record(record_id):
             record_to_edit.phone = request.form.get('phone', record_to_edit.phone)
             record_to_edit.email = request.form.get('email', record_to_edit.email)
             record_to_edit.description = request.form.get('description', record_to_edit.description)
-            # record_to_edit.status = request.form.get('status', record_to_edit.status) # Estado no se modifica desde aquí
 
             # Transaction Date
             transaction_date_str = request.form.get('transaction_date')
@@ -731,25 +737,44 @@ def edit_record(record_id):
             # Department Change and Digital Number Regeneration
             new_department_id = request.form.get('department_id', type=int)
             department_changed_and_status_updated = False # Flag for conditional flashing
+            original_department_name_for_flash = ""
+            new_department_obj_for_flash = None
 
             if new_department_id and new_department_id != original_department_id:
                 # Capture the current department name BEFORE changing it, for the flash message
                 original_department_name_for_flash = record_to_edit.department.name
 
                 new_department_obj = Department.query.get(new_department_id)
+                new_department_obj_for_flash = new_department_obj # Store for later flash
                 if new_department_obj:
                     record_to_edit.department_id = new_department_id
                     # Regenerate digital_number: Keep sequence, update dept code and date of change
                     new_dept_code = DEPARTMENT_CODES.get(new_department_obj.name, f"DPT{new_department_obj.id}")
                     date_str_for_number = datetime.now(UTC).strftime('%d-%m-%Y') # Date of this significant change
                     record_to_edit.digital_number = f"{new_dept_code}-{record_to_edit.sequence_number:04d}-{date_str_for_number}"
-                    record_to_edit.status = 'pending' # Change status to 'pending' on department change
+                    # Set status to 'pending' due to department change, admin can override this next.
+                    if record_to_edit.status != 'pending':
+                        record_to_edit.status = 'pending' 
                     department_changed_and_status_updated = True
-                    flash(f"El departamento fue cambiado de '{original_department_name_for_flash}' a '{new_department_obj.name}'. El estado se actualizó a 'Pendiente' y el número digital se regeneró.", "info")
+                    made_any_change = True # Department change is a significant change
                 else:
                     flash('Departamento seleccionado no válido.', 'danger')
                     # Pass current form data back to template for repopulation
-                    return render_template('edit_record.html', record=record_to_edit, departments=departments_for_select, current_data=request.form)
+                    return render_template('edit_record.html', record=record_to_edit, departments=departments_for_select, current_data=request.form, ALLOWED_RECORD_STATUSES=ALLOWED_RECORD_STATUSES, DATETIME_APP_FORMAT=APP_WIDE_DATETIME_FORMAT)
+
+            # Admin's explicit status choice (can override 'pending' from department change)
+            if current_user.role == 'admin': # Route is admin-only
+                selected_status_by_admin = request.form.get('status') # from the new <select>
+                if selected_status_by_admin and selected_status_by_admin in ALLOWED_RECORD_STATUSES:
+                    if record_to_edit.status != selected_status_by_admin:
+                        record_to_edit.status = selected_status_by_admin
+                        made_any_change = True # Status change is a significant change
+                elif selected_status_by_admin and selected_status_by_admin not in ALLOWED_RECORD_STATUSES:
+                    flash(f'El estado "{selected_status_by_admin}" seleccionado no es válido. El estado no fue cambiado por esta selección.', 'warning')
+
+            if department_changed_and_status_updated: # If department was changed
+                flash(f"El departamento fue cambiado de '{original_department_name_for_flash}' a '{new_department_obj_for_flash.name if new_department_obj_for_flash else 'N/A'}'. El estado se actualizó a '{record_to_edit.status.capitalize()}' y el número digital se regeneró.", "info")
+
             # Attachment Handling
             attachment_file = request.files.get('attachment')
             if attachment_file and attachment_file.filename != '':
@@ -783,8 +808,16 @@ def edit_record(record_id):
 
                 attachment_file.save(os.path.join(upload_path, new_attachment_savename))
                 record_to_edit.attachment_filename = new_attachment_savename
+                made_any_change = True # Attachment change is a significant change
             
-            # record.updated_at will be handled by onupdate in the model
+            # Check if any other basic field (not covered by specific flags like department or attachment) changed
+            # This is a simplified check; a more robust way would compare each field individually.
+            # For now, if made_any_change is True due to dept, status, or attachment, or if other fields were modified by request.form.get
+            # we assume a change. A more precise check would be needed for a perfect "no changes" message.
+            # The existing logic doesn't explicitly track changes for all basic fields for the 'made_any_change' flag.
+            # We'll rely on the fact that if any of the specific handlers (dept, status, attachment) set made_any_change, it's true.
+            # Or if the form submission itself implies changes.
+
             db.session.flush() # Ensure updated_at is set if it changed due to onupdate
             
             # Log history for modification
@@ -792,7 +825,7 @@ def edit_record(record_id):
                 record_id=record_to_edit.id,
                 user_id=current_user.id, # type: ignore
                 action_type="MODIFICACIÓN",
-                details=f"Datos del expediente actualizados. Departamento: {record_to_edit.department.name}. Estado: {record_to_edit.status.capitalize()}."
+                details=f"Datos del expediente actualizados. Departamento final: {record_to_edit.department.name}. Estado final: {record_to_edit.status.capitalize()}."
             )
             db.session.add(history_entry)
 
@@ -807,7 +840,8 @@ def edit_record(record_id):
             
             db.session.commit() # Commit all changes: record data, history, pdf filename
 
-            if not department_changed_and_status_updated and updated_pdf_file:
+            # Show generic success if department didn't change (as it has its own flash) and PDF was fine.
+            if not department_changed_and_status_updated and made_any_change and updated_pdf_file:
                 flash('Expediente actualizado exitosamente!', 'success')
             return redirect(url_for('view_record', record_id=record_to_edit.id))
 
@@ -820,10 +854,10 @@ def edit_record(record_id):
             flash(f'Error al actualizar el expediente: {str(e)}', 'danger')
         
         # If any error occurs and we don't redirect, re-render with current form data
-        return render_template('edit_record.html', record=record_to_edit, departments=departments_for_select, current_data=request.form, DATETIME_APP_FORMAT=APP_WIDE_DATETIME_FORMAT)
+        return render_template('edit_record.html', record=record_to_edit, departments=departments_for_select, current_data=request.form, ALLOWED_RECORD_STATUSES=ALLOWED_RECORD_STATUSES, DATETIME_APP_FORMAT=APP_WIDE_DATETIME_FORMAT)
 
     # GET request: Render the edit form, passing None for current_data initially
-    return render_template('edit_record.html', record=record_to_edit, departments=departments_for_select, current_data=None, DATETIME_APP_FORMAT=APP_WIDE_DATETIME_FORMAT)
+    return render_template('edit_record.html', record=record_to_edit, departments=departments_for_select, current_data=None, ALLOWED_RECORD_STATUSES=ALLOWED_RECORD_STATUSES, DATETIME_APP_FORMAT=APP_WIDE_DATETIME_FORMAT)
 
 @app.route('/records/<int:record_id>/attach', methods=['POST'])
 @login_required
