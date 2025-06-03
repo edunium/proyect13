@@ -45,7 +45,7 @@ DEPARTMENT_CODES = {
 }
 
 # Allowed statuses for records - Ensure this list is comprehensive
-ALLOWED_RECORD_STATUSES = ['activo', 'pendiente', 'en progreso', 'urgente']
+ALLOWED_RECORD_STATUSES = ['activo', 'pendiente', 'en progreso', 'urgente', 'archivado']
 
 # Inject current time into all templates
 @app.context_processor
