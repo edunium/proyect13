@@ -90,11 +90,11 @@
         <div class="card shadow mb-4 record-detail-card">
             <div class="card-header py-3 d-flex justify-content-between align-items-center">
                 <h6 class="m-0 font-weight-bold text-primary">Información del Expediente</h6>
-                <span class="badge {% if record.status == 'active' %}bg-success{% elif record.status == 'pending' %}bg-warning text-dark{% elif record.status == 'in_progress' %}bg-info text-dark{% elif record.status == 'archived' %}bg-secondary{% elif record.status == 'urgente' %}bg-danger{% else %}bg-light text-dark{% endif %} badge-large">
-                    {% if record.status == 'active' %}Activo
+                <span class="badge {% if record.status == 'activo' %}bg-success{% elif record.status == 'pending' %}bg-warning text-dark{% elif record.status == 'in_progress' %}bg-info text-dark{% elif record.status == 'archivado' %}bg-white text-dark border{% elif record.status == 'urgente' %}bg-danger{% else %}bg-light text-dark{% endif %} badge-large">
+                    {% if record.status == 'activo' %}Activo
                     {% elif record.status == 'pending' %}Pendiente
                     {% elif record.status == 'in_progress' %}En Progreso
-                    {% elif record.status == 'archived' %}Archivado
+                    {% elif record.status == 'archivado' %}Archivado
                     {% elif record.status == 'urgente' %}Urgente
                     {% else %}{{ record.status|capitalize }}
                     {% endif %}

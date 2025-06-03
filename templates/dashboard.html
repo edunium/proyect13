@@ -93,10 +93,10 @@
                                     <td>{{ record.full_name }}</td>
                                     <td>{{ record.department.name }}</td>
                                     <td>
-                                        {% if record.status == 'active' %}
+                                        {% if record.status == 'activo' %}
                                         <span class="badge bg-success">Activo</span>
-                                        {% elif record.status == 'archived' %}
-                                        <span class="badge bg-secondary">Archivado</span>
+                                        {% elif record.status == 'archivado' %}
+                                        <span class="badge bg-white text-dark border">Archivado</span>
                                         {% elif record.status == 'urgente' %}
                                         <span class="badge bg-danger">Urgente</span>
                                         {% elif record.status == 'pending' %}

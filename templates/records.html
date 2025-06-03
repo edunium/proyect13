@@ -136,7 +136,7 @@
                             <td>{{ record.full_name }}</td>
                             <td>{{ record.department.name }}</td>
                             <td class="text-center">
-                                {% if record.status == 'active' %}
+                                {% if record.status == 'activo' %}
                                 <span class="badge bg-success status-badge">Activo</span>
                                 {% elif record.status == 'pending' %} {# Value 'pending' for 'Pendiente' #}
                                 <span class="badge bg-warning text-dark status-badge">Pendiente</span>
@@ -144,8 +144,8 @@
                                 <span class="badge bg-danger status-badge">Urgente</span>
                                 {% elif record.status == 'in_progress' %}
                                 <span class="badge bg-info text-dark status-badge">En Progreso</span>
-                                {% elif record.status == 'archived' %}
-                                <span class="badge bg-secondary status-badge">Archivado</span>
+                                {% elif record.status == 'archivado' %}
+                                <span class="badge bg-white text-dark border status-badge">Archivado</span>
                                 {% else %}
                                 <span class="badge bg-light text-dark status-badge">{{ record.status|capitalize }}</span>
                                 {% endif %}
